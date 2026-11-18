@@ -211,3 +211,17 @@ def test_router_xml():
     assert r.manufacturer == "Sercomm" and r.model == "HG6244B"
     assert parse_device_xml('<!DOCTYPE x [<!ENTITY a "b">]><root/>') is None
     assert parse_device_xml("not xml") is None
+
+
+def test_router_text_is_sanitised():
+    xml = "<root><manufacturer>Evil\nCorp\t</manufacturer><modelName>" + "A" * 500 + "</modelName></root>"
+    r = parse_device_xml(xml)
+    assert "\n" not in r.manufacturer and len(r.model) <= 80
+
+
+def test_router_location_must_be_the_gateway():
+    from fixmywifi.nettests import safe_location
+    assert safe_location("http://192.168.1.1:5000/desc.xml", "192.168.1.1")
+    assert not safe_location("http://10.0.0.9/desc.xml", "192.168.1.1")
+    assert not safe_location("file:///etc/passwd", "192.168.1.1")
+    assert not safe_location("http://192.168.1.1:99999/x", "192.168.1.1")

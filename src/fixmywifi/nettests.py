@@ -104,12 +104,17 @@ def _dns_query(server: str, name: str, timeout: float = 2.0) -> Optional[float]:
     packet = header + qname + struct.pack(">HH", 1, 1)
     fam = socket.AF_INET6 if ":" in server else socket.AF_INET
     with socket.socket(fam, socket.SOCK_DGRAM) as s:
-        s.settimeout(timeout)
         start = time.perf_counter()
+        deadline = start + timeout
         try:
-            s.sendto(packet, (server, 53))
+            s.connect((server, 53))  # the OS then drops replies from any other address
+            s.send(packet)
             while True:
-                data, _ = s.recvfrom(2048)
+                left = deadline - time.perf_counter()
+                if left <= 0:
+                    return None
+                s.settimeout(left)
+                data = s.recv(2048)
                 if len(data) >= 2 and struct.unpack(">H", data[:2])[0] == qid:
                     return round((time.perf_counter() - start) * 1000, 1)
         except OSError:
@@ -294,9 +299,29 @@ def parse_device_xml(xml_text: str) -> Optional[Router]:
         return ""
     name, number = find("modelName"), find("modelNumber")
     model = name if (not number or number in name) else f"{name} {number}".strip()
-    r = Router(manufacturer=find("manufacturer"), model=model,
-               friendly_name=find("friendlyName"))
+    r = Router(manufacturer=_clean(find("manufacturer")), model=_clean(model),
+               friendly_name=_clean(find("friendlyName")))
     return r if (r.manufacturer or r.model) else None
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):  # the router must answer directly, never send us elsewhere
+        return None
+
+
+def safe_location(location: str, gateway: str) -> bool:
+    """Only fetch the router's own description: same IP as the gateway, plain http, a sane port."""
+    try:
+        u = urlparse(location)
+        port = u.port or 80
+    except ValueError:
+        return False
+    return u.scheme == "http" and (u.hostname or "") == gateway and 1 <= port <= 65535
+
+
+def _clean(text: str, limit: int = 80) -> str:
+    """Router-supplied text is untrusted: drop control characters and cap the length."""
+    return "".join(ch for ch in text if ch.isprintable())[:limit].strip()
 
 
 def identify_router(gateway: str, timeout: float = 2.5) -> Optional[Router]:
@@ -322,11 +347,13 @@ def identify_router(gateway: str, timeout: float = 2.5) -> Optional[Router]:
         return None
     if not location:
         return None
-    host = urlparse(location).hostname or ""
-    if host != gateway or urlparse(location).scheme not in ("http", "https"):
+    if not safe_location(location, gateway):
         return None
+    opener = urllib.request.build_opener(_NoRedirect)
     try:
-        with urllib.request.urlopen(urllib.request.Request(location, headers=UA), timeout=timeout) as r:
+        with opener.open(urllib.request.Request(location, headers=UA), timeout=timeout) as r:
+            if not safe_location(r.geturl(), gateway):
+                return None
             return parse_device_xml(r.read(200_000).decode(errors="ignore"))
     except (OSError, ValueError):
         return None

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import copy
 import html
+import ipaddress
 import json
 from datetime import datetime
 from typing import List, Tuple
 
 from rich.console import Console, Group
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -29,8 +31,26 @@ def redact(report: Report) -> Report:
     for n in ([r.scan.link] if r.scan.link else []) + r.scan.nearby:
         n.ssid = "(hidden)" if n.ssid else ""
         n.bssid = ""
+    if r.scan.link:
+        r.scan.link.interface = ""
+    gw = report.scan.gateway_ip
+    for p in (r.scan.gateway_ping, r.scan.internet_ping):
+        if p and (p.host == gw or _is_private(p.host)):
+            p.host = "(your router)"
+    for d in r.scan.dns:
+        if d.label.startswith("Your"):
+            d.server = "(hidden)"
+    if r.scan.router:
+        r.scan.router.friendly_name = ""
     r.scan.gateway_ip = ""
     return r
+
+
+def _is_private(host: str) -> bool:
+    try:
+        return ipaddress.ip_address(host).is_private
+    except ValueError:
+        return False
 
 
 def facts(report: Report) -> List[Tuple[str, str]]:
@@ -110,7 +130,7 @@ def render_terminal(report: Report, console: Console, brief: bool = False) -> No
     t.add_column(style="dim", no_wrap=True)
     t.add_column()
     for k, v in facts(report):
-        t.add_row(k, v)
+        t.add_row(k, Text(v))  # values can come from the router: never interpret them as markup
     if t.row_count:
         console.print(Panel(t, title="What we measured", border_style="dim"))
 
@@ -155,7 +175,7 @@ def render_terminal(report: Report, console: Console, brief: bool = False) -> No
         for f in goods:
             console.print(f"[green]{ICON['good']}[/] {f.title}")
     for n in report.scan.notes:
-        console.print(f"[dim]ⓘ {n}[/]")
+        console.print(f"[dim]ⓘ {escape(n)}[/]")
     console.print("\n[dim]No network names or addresses are shown, so this is safe to screenshot and share.[/]")
     console.print(f"[dim]Helped? A ⭐ on GitHub helps others find it: {REPO}[/]\n")
 
@@ -163,10 +183,14 @@ def render_terminal(report: Report, console: Console, brief: bool = False) -> No
 # ---------------------------------------------------------------- markdown
 
 
+def _md_cell(v: str) -> str:
+    return html.escape(v.replace("|", "\\|").replace("\n", " "))
+
+
 def render_markdown(report: Report) -> str:
     out = [f"# fixmywifi report: {report.score}/100 (grade {report.grade})", "", f"_{report.summary}_", "",
            "| | |", "|---|---|"]
-    out += [f"| {k} | {v} |" for k, v in facts(report)]
+    out += [f"| {k} | {_md_cell(v)} |" for k, v in facts(report)]
     plan = action_plan(report)
     if plan:
         out += ["", "## Do these first", ""] + [f"{i}. {s}" for i, s in enumerate(plan, 1)]
