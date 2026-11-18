@@ -1,0 +1,19 @@
+name: Advice / rule idea
+description: Suggest a new check, or a fix to existing advice
+labels: [rule, enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What Wi-Fi problem should fixmywifi catch?
+    validations:
+      required: true
+  - type: textarea
+    id: detect
+    attributes:
+      label: How could it be detected?
+      description: Which measurement or answer would show it? Any thresholds or sources?
+  - type: textarea
+    id: fix
+    attributes:
+      label: What should we tell people to do?

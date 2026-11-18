@@ -1,0 +1,32 @@
+name: Bug report
+description: fixmywifi crashed, misread something, or gave wrong advice
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks! Please remove network names and MAC addresses from anything you paste."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did fixmywifi say, and what did you expect?
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Linux, Windows, Other]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: fixmywifi version
+      placeholder: "fixmywifi --version"
+  - type: textarea
+    id: json
+    attributes:
+      label: Output of `fixmywifi --json --quick --no-speedtest`
+      description: Names and addresses are already removed from this output.
+      render: json

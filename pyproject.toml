@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fixmywifi"
+version = "0.1.0"
+description = "Find out why your Wi-Fi is slow, in plain English. Scans your connection, asks about your home, and tells you exactly what to fix."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [{ name = "fixmywifi contributors" }]
+keywords = ["wifi", "wi-fi", "network", "diagnostics", "speedtest", "bufferbloat", "router", "mesh", "troubleshooting", "cli"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "Intended Audience :: System Administrators",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Topic :: System :: Networking :: Monitoring",
+  "Topic :: Utilities",
+]
+dependencies = ["rich>=13.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[project.scripts]
+fixmywifi = "fixmywifi.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Tolz99/fixmywifi"
+Issues = "https://github.com/Tolz99/fixmywifi/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fixmywifi"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "UP006", "UP007", "UP035", "UP045"]  # keep typing syntax that works on Python 3.9

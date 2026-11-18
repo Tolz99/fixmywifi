@@ -1,0 +1,15 @@
+{
+  "problem": "some_rooms",
+  "home_type": "house",
+  "size_sqm": 140,
+  "rooms": 6,
+  "floors": 2,
+  "walls": "brick",
+  "router_spot": "edge",
+  "setup": "isp_router",
+  "router_age_years": 5,
+  "devices": 25,
+  "plan_mbps": 500,
+  "uses": ["streaming", "calls", "wfh"],
+  "where_now": "next_room"
+}
